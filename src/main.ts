@@ -10,21 +10,27 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // allow requests with no origin (Postman, mobile apps, server-to-server)
       if (!origin) return callback(null, true);
 
-      // Allow all localhost ports
+      const hostname = new URL(origin).hostname;
+
+      // Allow localhost on any port
       const isLocalhost =
         /^http:\/\/localhost:\d+$/.test(origin) ||
         /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
 
-      // Allow Lovable preview apps
-      const isLovable = /\.lovable\.app$/.test(new URL(origin).hostname);
+      // Allow *.lovable.app
+      const isLovable = /\.lovable\.app$/.test(hostname);
 
-      if (isLocalhost || isLovable) {
+      // Allow *.codeimplants.com + codeimplants.com
+      const isCodeImplants =
+        hostname === 'codeimplants.com' ||
+        /\.codeimplants\.com$/.test(hostname);
+
+      if (isLocalhost || isLovable || isCodeImplants) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error(`CORS blocked for origin: ${origin}`));
       }
     },
 
