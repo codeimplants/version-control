@@ -7,15 +7,32 @@ dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
   app.enableCors({
-    origin: [
-      'https://versioncontrol.codeimplants.com',
-      'http://localhost:5173'
-    ],
+    origin: (origin, callback) => {
+      // allow requests with no origin (Postman, mobile apps, server-to-server)
+      if (!origin) return callback(null, true);
+
+      // Allow all localhost ports
+      const isLocalhost =
+        /^http:\/\/localhost:\d+$/.test(origin) ||
+        /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
+
+      // Allow Lovable preview apps
+      const isLovable = /\.lovable\.app$/.test(new URL(origin).hostname);
+
+      if (isLocalhost || isLovable) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -23,6 +40,8 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
   await app.listen(process.env.PORT || 6000);
 }
+
 bootstrap();
