@@ -12,28 +12,31 @@ async function bootstrap() {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      const hostname = new URL(origin).hostname;
+      let hostname: string;
+      try {
+        hostname = new URL(origin).hostname;
+      } catch {
+        console.warn(`CORS: could not parse origin "${origin}"`);
+        return callback(null, false);
+      }
 
-      // Allow localhost on any port
-      const isLocalhost =
-        /^http:\/\/localhost:\d+$/.test(origin) ||
-        /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
+      const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(
+        origin,
+      );
 
-      // Allow *.lovable.app
       const isLovable = /\.lovable\.app$/.test(hostname);
 
-      // Allow *.codeimplants.com + codeimplants.com
       const isCodeImplants =
         hostname === 'codeimplants.com' ||
         /\.codeimplants\.com$/.test(hostname);
 
       if (isLocalhost || isLovable || isCodeImplants) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS blocked for origin: ${origin}`));
+        return callback(null, true);
       }
-    },
 
+      console.warn(`CORS blocked for origin: ${origin}`);
+      return callback(null, false);
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -50,4 +53,7 @@ async function bootstrap() {
   await app.listen(process.env.PORT || 6000);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Failed to start application', err);
+  process.exit(1);
+});
