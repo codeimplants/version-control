@@ -5,6 +5,31 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+const ALLOWED_ORIGINS = [
+  // React (CRA default)
+  'http://localhost:3000',
+  // Vite default
+  'http://localhost:5173',
+  // Angular default
+  'http://localhost:4200',
+  // Your custom dev ports seen in errors
+  'http://localhost:8100',
+  'http://localhost:8081',
+  // Add any other specific dev ports here
+  'http://localhost:8080',
+  'http://localhost:4173', // vite preview
+
+  // Production / subdomains
+  'https://sonebill.codeimplants.com',
+  'https://sonebill.lovable.app',
+  'https://sonetaran.codeimplants.com',
+  'https://sonetaran.lovable.app',
+  'https://sonebhav.codeimplants.com',
+  'https://jewelerp.codeimplants.com',
+  'https://sssdsahyadri.codeimplants.com',
+  'https://panchalsonar.in/',
+];
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -12,25 +37,7 @@ async function bootstrap() {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      let hostname: string;
-      try {
-        hostname = new URL(origin).hostname;
-      } catch {
-        console.warn(`CORS: could not parse origin "${origin}"`);
-        return callback(null, false);
-      }
-
-      const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(
-        origin,
-      );
-
-      const isLovable = /\.lovable\.app$/.test(hostname);
-
-      const isCodeImplants =
-        hostname === 'codeimplants.com' ||
-        /\.codeimplants\.com$/.test(hostname);
-
-      if (isLocalhost || isLovable || isCodeImplants) {
+      if (ALLOWED_ORIGINS.includes(origin)) {
         return callback(null, true);
       }
 
