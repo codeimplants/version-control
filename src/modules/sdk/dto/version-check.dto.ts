@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNotEmpty, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, IsEnum, IsIn } from 'class-validator';
 
 export enum Platform {
   ANDROID = 'android',
@@ -20,7 +20,9 @@ export class VersionCheckDto {
   @IsOptional()
   appId?: string;
 
-  @IsEnum(Platform)
+  @IsIn([Platform.ANDROID, Platform.IOS], {
+    message: 'platform must be android or ios',
+  })
   @IsNotEmpty()
   platform: Platform;
 

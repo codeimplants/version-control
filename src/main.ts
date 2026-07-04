@@ -30,6 +30,21 @@ const ALLOWED_ORIGINS = [
   'https://panchalsonar.in/',
 ];
 
+// Any subdomain (and the apex) of these domains is allowed.
+const ALLOWED_ORIGIN_SUFFIXES = ['codeimplants.com', 'lovable.app'];
+
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    return ALLOWED_ORIGIN_SUFFIXES.some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -37,7 +52,7 @@ async function bootstrap() {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      if (ALLOWED_ORIGINS.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
 
