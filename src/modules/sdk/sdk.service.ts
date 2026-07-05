@@ -15,6 +15,10 @@ export class SdkService {
     ): Promise<VersionCheckResponse> {
         try {
             // 1. Validate API Key and get app
+            if (!apiKey) {
+                throw new UnauthorizedException('Missing API Key');
+            }
+
             const app = await this.prisma.app.findUnique({
                 where: { apiKey },
                 include: {
@@ -195,6 +199,10 @@ export class SdkService {
      * Get app statistics
      */
     async getAppStats(apiKey: string) {
+        if (!apiKey) {
+            throw new UnauthorizedException('Missing API Key');
+        }
+
         const app = await this.prisma.app.findUnique({
             where: { apiKey },
             include: {
