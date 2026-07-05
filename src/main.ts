@@ -72,7 +72,32 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT || 6000);
+  const port = await listenOnAvailablePort(app, Number(process.env.PORT) || 6000);
+  console.log(`Application is running on port ${port}`);
+}
+
+async function listenOnAvailablePort(
+  app: Awaited<ReturnType<typeof NestFactory.create>>,
+  startPort: number,
+  maxAttempts = 10,
+): Promise<number> {
+  let port = startPort;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      await app.listen(port);
+      return port;
+    } catch (err) {
+      if (err.code === 'EADDRINUSE') {
+        console.warn(`Port ${port} is already in use, trying ${port + 1}...`);
+        port++;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(
+    `Could not find an available port after ${maxAttempts} attempts starting from ${startPort}`,
+  );
 }
 
 bootstrap().catch((err) => {
