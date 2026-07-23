@@ -20,8 +20,8 @@ export class VersionCheckDto {
   @IsOptional()
   appId?: string;
 
-  @IsIn([Platform.ANDROID, Platform.IOS], {
-    message: 'platform must be android or ios',
+  @IsIn([Platform.ANDROID, Platform.IOS, Platform.WEB], {
+    message: 'platform must be android, ios, or web',
   })
   @IsNotEmpty()
   platform: Platform;
