@@ -5,7 +5,12 @@
   // instead of dist/ — which breaks both `start:prod` ("node dist/main") and the
   // PM2 script path. seed.ts is a standalone script, not part of the app build.
   "compilerOptions": {
-    "rootDir": "src"
+    "rootDir": "src",
+    // Must live inside outDir. nest-cli has deleteOutDir:true, so if the
+    // incremental buildinfo sits outside dist it survives the wipe, TypeScript
+    // concludes the outputs are still current, and the build "succeeds" while
+    // emitting nothing.
+    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
   },
   "exclude": ["node_modules", "test", "dist", "seed.ts", "**/*spec.ts"]
 }
