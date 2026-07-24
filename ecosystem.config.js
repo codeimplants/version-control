@@ -32,9 +32,14 @@ const app = (env, port) => ({
   },
 });
 
+// Port map on this VPS (31.97.61.191), so nothing collides:
+//   3000/3001, 5000/5001, 9000 — other services
+//   4000-4002 — sonetaran        7000-7002 — sonebill
+//   6000      — gold-rate/prod   <-- taken, which is why nexus-prod is NOT 6000
+//   6001-6003 — nexus
 module.exports = {
   apps: [
-    app('prod', 6000),
+    app('prod', 6003),
     app('dev', 6001),
     app('preprod', 6002),
   ],

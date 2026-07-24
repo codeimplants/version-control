@@ -37,9 +37,11 @@ PREPROD_APP_DIR="/home/sanskarpandit/nexus-backend-preprod"
 PREPROD_PM2_NAME="nexus-backend-preprod"
 PREPROD_PORT="6002"
 
+# NOTE: prod is 6003, not 6000 — 6000 is already taken by gold-rate/prod on
+# this VPS. Must stay in sync with ecosystem.config.js.
 PROD_APP_DIR="/home/sanskarpandit/nexus-backend-prod"
 PROD_PM2_NAME="nexus-backend-prod"
-PROD_PORT="6000"
+PROD_PORT="6003"
 
 # --- Health check ------------------------------------------------------------
 # Path hit on 127.0.0.1:<port> after restart. Empty to skip.
