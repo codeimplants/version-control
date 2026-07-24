@@ -1,4 +1,11 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  // rootDir pins the emit layout. Without it the root-level seed.ts widens the
+  // common source directory to the project root, so output lands in dist/src/
+  // instead of dist/ — which breaks both `start:prod` ("node dist/main") and the
+  // PM2 script path. seed.ts is a standalone script, not part of the app build.
+  "compilerOptions": {
+    "rootDir": "src"
+  },
+  "exclude": ["node_modules", "test", "dist", "seed.ts", "**/*spec.ts"]
 }
