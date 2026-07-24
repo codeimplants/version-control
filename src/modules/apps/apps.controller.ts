@@ -30,7 +30,8 @@ export class AppsController {
     }
 
     @Put(':id')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     update(@Param('id') id: string, @Body() body: any, @User() user: { id: string; role: string }) {
         return this.apps.update(id, body, { userId: user.id, role: user.role });
     }
@@ -48,50 +49,62 @@ export class AppsController {
         return this.apps.getStats(id);
     }
 
+    // Version control + store config below is management, not analytics — blocked
+    // for LEAD_GEN via RolesGuard (allow-list excludes it). findAll/findOne/getStats
+    // above stay open so lead-gen users can still populate the sidebar and overview.
+
     @Get(':id/rules')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     getRules(@Param('id') id: string) {
         return this.apps.getRules(id);
     }
 
     @Post(':id/rules')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     createRule(@Param('id') id: string, @Body() body: any) {
         return this.apps.createRule(id, body);
     }
 
     @Get(':id/store-urls')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     getStoreUrls(@Param('id') id: string) {
         return this.apps.getStoreUrls(id);
     }
 
     @Post(':id/store-urls')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     upsertStoreUrl(@Param('id') id: string, @Body() body: any) {
         return this.apps.upsertStoreUrl(id, body);
     }
 
     @Delete(':id/store-urls/:platform')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     deleteStoreUrl(@Param('id') id: string, @Param('platform') platform: string) {
         return this.apps.deleteStoreUrl(id, platform);
     }
 
     @Get(':id/maintenance')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     getMaintenance(@Param('id') id: string) {
         return this.apps.getMaintenance(id);
     }
 
     @Put(':id/maintenance')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     updateMaintenance(@Param('id') id: string, @Body() body: any) {
         return this.apps.updateMaintenance(id, body);
     }
 
     @Patch(':id/maintenance/toggle')
-    @UseGuards(AppAccessGuard)
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN', 'COLLABORATOR')
     toggleMaintenance(@Param('id') id: string) {
         return this.apps.toggleMaintenance(id);
     }
