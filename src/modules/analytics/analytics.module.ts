@@ -4,9 +4,10 @@ import { AnalyticsService } from './analytics.service';
 import { PrismaService } from '../../database/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { AppAccessGuard } from '../../common/guards/app-access.guard';
+import { AppAdminModule } from '../app-admin/app-admin.module';
 
 @Module({
-    imports: [AuthModule],
+    imports: [AuthModule, AppAdminModule],
     controllers: [AnalyticsController],
     providers: [AnalyticsService, PrismaService, AppAccessGuard],
 })

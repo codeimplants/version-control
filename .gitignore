@@ -42,6 +42,10 @@ lerna-debug.log*
 .env.production.local
 .env.local
 
+# Deploy config holds server addresses (not secrets) and is machine-local.
+# Copy scripts/deploy.config.example.sh to create it.
+scripts/deploy.config.sh
+
 # temp directory
 .temp
 .tmp

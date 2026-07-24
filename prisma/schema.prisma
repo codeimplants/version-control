@@ -4,18 +4,28 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Pooled Neon endpoint (-pooler) for application queries.
+  url       = env("DATABASE_URL")
+  // Unpooled endpoint for migrations. Prisma takes advisory locks, which do not
+  // work reliably through a connection pooler — `migrate deploy` can hang or fail
+  // against the pooled host.
+  // REQUIRED: there is no fallback. Every .env (local and each VPS checkout)
+  // must define DIRECT_URL or the schema fails to load with P1012.
+  directUrl = env("DIRECT_URL")
 }
 
 model Admin {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      String   @default("ADMIN") // ADMIN | COLLABORATOR
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String            @id @default(uuid())
+  email            String            @unique
+  password         String
+  // Primary login for the admin console is phone + OTP; email/password is kept
+  // as a secondary method behind ALLOW_PASSWORD_LOGIN.
+  phone            String?           @unique
+  name             String?
+  role             String            @default("ADMIN") // ADMIN | COLLABORATOR
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   appCollaborators AppCollaborator[]
 }
 
@@ -26,138 +36,224 @@ model AppCollaborator {
   createdAt DateTime @default(now())
   app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
   admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
   @@unique([appId, adminId])
   @@index([adminId])
   @@index([appId])
 }
 
 model App {
-  id                String             @id @default(uuid())
-  name              String
-  appId             String?
-  minVersionIos     String?
-  minVersionAndroid String?
-  apiKey            String             @unique
-  description       String?
-  platforms         String[]
-  icon              String?
-  isActive          Boolean            @default(true)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime          @updatedAt
-  rules             VersionRule[]
-  devices           Device[]
-  analytics         AppAnalytics[]
-  maintenanceMode   MaintenanceMode?
-  storeUrls         StoreUrl[]
-  collaborators     AppCollaborator[]
+  id                  String            @id @default(uuid())
+  name                String
+  appId               String?
+  minVersionIos       String?
+  minVersionAndroid   String?
+  apiKey              String            @unique
+  description         String?
+  platforms           String[]
+  icon                String?
+  isActive            Boolean           @default(true)
+  // Federation: how the platform reaches this app's own backend for
+  // app-specific admin activities + on-demand phone/registration lookup.
+  backendBaseUrl      String? // e.g. https://sonebill-backend.example.com
+  backendServiceToken String? // service credential; encrypted at rest, never returned to dashboard
+  // Path on the app's backend returning its users (id + phone + registration
+  // date), used to resolve pseudonymous ids to real contacts for outreach.
+  // e.g. "/api/dukandar/stats"
+  backendUsersPath    String?
+  // Base path for deleting a user on the app's own backend, invoked as
+  // DELETE {backendBaseUrl}{backendDeleteUserPath}/{externalUserId}. The app's
+  // own deletion process runs there (cascade + retention of basic details).
+  // e.g. "/api/dukandar"
+  backendDeleteUserPath String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  rules               VersionRule[]
+  devices             Device[]
+  analytics           AppAnalytics[]
+  endUsers            EndUser[]
+  usageSessions       UsageSession[]
+  dailyUsage          DailyUsage[]
+  maintenanceMode     MaintenanceMode?
+  storeUrls           StoreUrl[]
+  collaborators       AppCollaborator[]
 }
 
 model VersionRule {
-  id                    String   @id @default(uuid())
-  appId                 String
-  platform              String   // android | ios | web | windows | macos | linux
-  environment           String   // prod | staging | dev
-  
-  latestVersion         String   // Latest available version
-  updateType            String   // soft | force | none
-  blockedVersions       String[] // Specific versions to block
-  killSwitch            Boolean  @default(false)
-  isActive              Boolean  @default(true)
-  priority              Int      @default(0) // Higher priority rules are evaluated first
-  
-  // Message Configuration
-  messageConfig         Json     // { title, message, buttonText, etc. }
-  
-  // Advanced Features
-  rolloutPercentage     Float    @default(100) // Gradual rollout (0-100)
-  startDate             DateTime?
-  endDate               DateTime?
-  
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id          String @id @default(uuid())
+  appId       String
+  platform    String // android | ios | web | windows | macos | linux
+  environment String // prod | staging | dev
 
-  app                   App      @relation(fields: [appId], references: [id], onDelete: Cascade)
-  
+  latestVersion   String // Latest available version
+  updateType      String // soft | force | none
+  blockedVersions String[] // Specific versions to block
+  killSwitch      Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  priority        Int      @default(0) // Higher priority rules are evaluated first
+
+  // Message Configuration
+  messageConfig Json // { title, message, buttonText, etc. }
+
+  // Advanced Features
+  rolloutPercentage Float     @default(100) // Gradual rollout (0-100)
+  startDate         DateTime?
+  endDate           DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+
   @@index([appId, platform, environment])
   @@index([isActive])
 }
 
 model StoreUrl {
-  id          String   @id @default(uuid())
-  appId       String
-  platform    String   // android | ios | web
-  storeUrl    String   // Play Store, App Store, or Web URL
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(uuid())
+  appId     String
+  platform  String // android | ios | web
+  storeUrl  String // Play Store, App Store, or Web URL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+
   @@unique([appId, platform])
 }
 
 model MaintenanceMode {
-  id          String   @id @default(uuid())
-  appId       String   @unique
-  isEnabled   Boolean  @default(false)
-  title       String   @default("Under Maintenance")
-  message     String   @default("We are currently performing maintenance. Please check back soon.")
+  id           String    @id @default(uuid())
+  appId        String    @unique
+  isEnabled    Boolean   @default(false)
+  title        String    @default("Under Maintenance")
+  message      String    @default("We are currently performing maintenance. Please check back soon.")
   estimatedEnd DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
 }
 
 model Device {
-  id              String   @id @default(uuid())
-  appId           String
-  deviceId        String   // Unique device identifier
-  platform        String
-  osVersion       String?
-  appVersion      String?
-  buildNumber     String?
-  lastCheckIn     DateTime @default(now())
-  firstSeen       DateTime @default(now())
-  isActive        Boolean  @default(true)
-  metadata        Json?    // Additional device info
-  
-  app             App      @relation(fields: [appId], references: [id], onDelete: Cascade)
-  
+  id           String   @id @default(uuid())
+  appId        String
+  deviceId     String // Unique device identifier
+  platform     String
+  osVersion    String?
+  appVersion   String?
+  buildNumber  String?
+  // Device make/model promoted from metadata to first-class columns so the
+  // dashboard can break users down by manufacturer/model (iPhone vs Android make/model).
+  make         String? // e.g. Apple, Samsung, Xiaomi
+  model        String? // e.g. iPhone15,2 / SM-G991B
+  manufacturer String? // raw manufacturer string when distinct from make
+  lastCheckIn  DateTime @default(now())
+  firstSeen    DateTime @default(now())
+  isActive     Boolean  @default(true)
+  metadata     Json? // Additional device info (still populated for backward-compat)
+
+  // Link to the logged-in end user on this device (nullable: installed-but-not-logged-in).
+  endUserId String?
+
+  app     App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  endUser EndUser? @relation(fields: [endUserId], references: [id], onDelete: SetNull)
+
   @@unique([appId, deviceId])
   @@index([appId, platform])
   @@index([lastCheckIn])
+  @@index([endUserId])
+}
+
+// A logged-in end user of a client app. Pseudonymous: we store only the app
+// backend's own user id (externalUserId), never credentials or raw PII. Phone and
+// registrationDate are federated on-demand from the app's own backend.
+model EndUser {
+  id             String   @id @default(uuid())
+  appId          String
+  externalUserId String // the app-backend user _id
+  platform       String? // platform of first identify
+  authMethod     String? // otp | email | ... (reporting only, expandable)
+  registeredAt   DateTime @default(now()) // first time we saw this user identify
+  firstSeen      DateTime @default(now())
+  lastActiveAt   DateTime @default(now())
+
+  app           App            @relation(fields: [appId], references: [id], onDelete: Cascade)
+  devices       Device[]
+  usageSessions UsageSession[]
+  dailyUsage    DailyUsage[]
+
+  @@unique([appId, externalUserId])
+  @@index([appId, lastActiveAt])
+}
+
+// A single foreground session, opened on APP_OPEN and closed on APP_BACKGROUND.
+model UsageSession {
+  id          String    @id @default(uuid())
+  appId       String
+  endUserId   String? // null when the session happens before login
+  deviceId    String
+  platform    String?
+  appVersion  String?
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  durationSec Int? // computed on close
+
+  app     App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  endUser EndUser? @relation(fields: [endUserId], references: [id], onDelete: SetNull)
+
+  @@index([appId, deviceId, endedAt])
+  @@index([appId, startedAt])
+  @@index([endUserId])
+}
+
+// Per-user per-day rollup for fast day/week/month/year aggregation.
+model DailyUsage {
+  id               String   @id @default(uuid())
+  appId            String
+  endUserId        String
+  date             DateTime @db.Date // date-only (UTC day bucket)
+  totalDurationSec Int      @default(0)
+  openCount        Int      @default(0)
+  sessionCount     Int      @default(0)
+
+  app     App     @relation(fields: [appId], references: [id], onDelete: Cascade)
+  endUser EndUser @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, endUserId, date])
+  @@index([appId, date])
 }
 
 model AppAnalytics {
-  id              String   @id @default(uuid())
-  appId           String
-  date            DateTime @default(now())
-  platform        String
-  environment     String
-  version         String?
-  eventType       String   // version_check | update_soft | update_force | kill_switch | blocked
-  deviceId        String?
-  metadata        Json?
-  
-  app             App      @relation(fields: [appId], references: [id], onDelete: Cascade)
-  
+  id          String   @id @default(uuid())
+  appId       String
+  date        DateTime @default(now())
+  platform    String
+  environment String
+  version     String?
+  eventType   String // version_check | update_soft | update_force | kill_switch | blocked
+  deviceId    String?
+  metadata    Json?
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+
   @@index([appId, date])
   @@index([appId, eventType])
   @@index([platform, version])
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  adminId   String
+  id         String   @id @default(uuid())
+  adminId    String
   adminEmail String?
-  action    String   // CREATE | UPDATE | DELETE | LOGIN | etc.
-  entity    String   // App | VersionRule | MaintenanceMode | etc.
-  entityId  String?
-  payload   Json
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  
+  action     String // CREATE | UPDATE | DELETE | LOGIN | etc.
+  entity     String // App | VersionRule | MaintenanceMode | etc.
+  entityId   String?
+  payload    Json
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
   @@index([adminId])
   @@index([entity, action])
   @@index([createdAt])

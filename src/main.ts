@@ -28,6 +28,12 @@ const ALLOWED_ORIGINS = [
   'https://jewelerp.codeimplants.com',
   'https://sssdsahyadri.codeimplants.com',
   'https://panchalsonar.in/',
+
+  // Nexus admin panel on Firebase Hosting (project version-control-vc).
+  // Listed as exact origins on purpose: putting 'firebaseapp.com' in the suffix
+  // list below would let ANY Firebase-hosted site call this API.
+  'https://version-control-vc.firebaseapp.com',
+  'https://version-control-vc.web.app',
 ];
 
 // Any subdomain (and the apex) of these domains is allowed.
@@ -72,7 +78,24 @@ async function bootstrap() {
     }),
   );
 
-  const port = await listenOnAvailablePort(app, Number(process.env.PORT) || 6000);
+  const requestedPort = Number(process.env.PORT) || 6000;
+
+  // Port hunting is a local-development convenience only. On the VPS each
+  // environment has a fixed port (prod 6000, dev 6001, preprod 6002), so an
+  // instance that "helpfully" moved to the next free port would bind ANOTHER
+  // environment's port — serving prod traffic from dev code, or silently sitting
+  // somewhere nginx and the health check never look. Deployed envs fail fast.
+  const isDeployed = ['dev', 'preprod', 'prod'].includes(process.env.NODE_ENV ?? '');
+
+  if (isDeployed) {
+    await app.listen(requestedPort);
+    console.log(
+      `Application is running on port ${requestedPort} (NODE_ENV=${process.env.NODE_ENV})`,
+    );
+    return;
+  }
+
+  const port = await listenOnAvailablePort(app, requestedPort);
   console.log(`Application is running on port ${port}`);
 }
 

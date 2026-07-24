@@ -4,6 +4,10 @@ import { Controller, Get } from '@nestjs/common';
 export class HealthController {
   @Get()
   check() {
-    return { status: 'ok', service: 'version-control-backend' };
+    return {
+      status: 'ok',
+      service: 'nexus-backend',
+      environment: process.env.NODE_ENV ?? 'local',
+    };
   }
 }

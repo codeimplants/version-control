@@ -1,6 +1,9 @@
-import { Body, Controller, Get, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Post } from '@nestjs/common';
 import { SdkService } from './sdk.service';
 import { VersionCheckDto } from './dto/version-check.dto';
+import { IngestEventsDto } from './dto/event.dto';
+import { IdentifyDto } from './dto/identify.dto';
+import { DeviceRegisterDto } from './dto/device.dto';
 
 @Controller('sdk')
 export class SdkController {
@@ -12,6 +15,36 @@ export class SdkController {
         @Body() body: VersionCheckDto,
     ) {
         return this.sdk.checkVersion(apiKey, body);
+    }
+
+    /** Register/refresh this device (backs install counts + make/model split). */
+    @Post('device')
+    @HttpCode(202)
+    registerDevice(
+        @Headers('x-api-key') apiKey: string,
+        @Body() body: DeviceRegisterDto,
+    ) {
+        return this.sdk.registerDevice(apiKey, body);
+    }
+
+    /** Batched engagement events (app_open / app_background / login_success / ...). */
+    @Post('events')
+    @HttpCode(202)
+    ingestEvents(
+        @Headers('x-api-key') apiKey: string,
+        @Body() body: IngestEventsDto,
+    ) {
+        return this.sdk.ingestEvents(apiKey, body);
+    }
+
+    /** Link a device to a logged-in end user (any auth method). */
+    @Post('user/identify')
+    @HttpCode(202)
+    identifyUser(
+        @Headers('x-api-key') apiKey: string,
+        @Body() body: IdentifyDto,
+    ) {
+        return this.sdk.identifyUser(apiKey, body);
     }
 
     @Get('stats')
